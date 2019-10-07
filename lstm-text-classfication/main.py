@@ -72,7 +72,11 @@ if use_cuda:
     rnn = rnn.cuda()
 
 optimizer = torch.optim.Adam(rnn.parameters(), lr=args.lr, weight_decay=0.001)
+#https://pytorch.org/docs/stable/optim.html#torch.optim.Adam
+#adam 适应性矩估计(adaptive moment estimation) lr:learing rate 权重衰减
 criterion = torch.nn.CrossEntropyLoss()
+#https://pytorch.org/docs/stable/nn.html#crossentropyloss
+#结合logsoftmax()和NLLLoss() https://www.cnblogs.com/marsggbo/p/10401215.html
 
 # ##############################################################################
 # Training
@@ -85,14 +89,14 @@ valid_loss = []
 accuracy = []
 
 def repackage_hidden(h):
-    if type(h) == Variable:
+    if isinstance(h, Variable):#if type(h) == Variable:
         if use_cuda:
             return Variable(h.data).cuda()
         return Variable(h.data)
     else:
         return tuple(repackage_hidden(v) for v in h)
 
-def evaluate():
+def evaluate():  #先测试再train
     rnn.eval()
     corrects = eval_loss = 0
     _size = validation_data.sents_size
@@ -105,6 +109,7 @@ def evaluate():
 
         eval_loss += loss.data
         corrects += (torch.max(pred, 1)[1].view(label.size()).data == label.data).sum()
+        #max() 返回每一列中最大值的那个元素
 
     return eval_loss[0]/_size, corrects, corrects/_size * 100.0, _size
 
@@ -116,7 +121,9 @@ def train():
                 desc='Train Processing', leave=False):
         optimizer.zero_grad()
         hidden = repackage_hidden(hidden)
-        target, hidden = rnn(data, hidden)
+        print(type(data.to(torch.FloatTensor)))
+        target, hidden = rnn(data.to(torch.FloatTensor), torch.Tensor(hidden).float())
+        #target, hidden = rnn(torch.Tensor(data).to(torch.FloatTensor), torch.Tensor(hidden).to(torch.FloatTensor))
         loss = criterion(target, label)
 
         loss.backward()
